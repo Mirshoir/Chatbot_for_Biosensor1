@@ -278,14 +278,14 @@ def show_engagement_trends():
             mode='markers+lines',
             name='Raw Score',
             marker=dict(color='#1f77b4')
-        )
-                     )
+        ))  # Fixed parentheses
         fig.add_trace(go.Scatter(
             x=df['timestamp'], 
             y=df['rolling_avg'], 
             mode='lines',
             name='3-Point Avg',
-            line=dict(color='#ff7f0e', width=3))
+            line=dict(color='#ff7f0e', width=3)
+        ))  # Fixed parentheses
         
         fig.update_layout(
             title="Engagement Score Over Time",
