@@ -336,6 +336,7 @@ def periodic_capture_ui():
         
     col1, col2 = st.columns([1, 3])
     with col1:
+        # Use unique key here
         if st.button("▶️ Start Auto Capture" if not st.session_state.capture_running else "⏹️ Stop Auto Capture", 
                      key="unique_auto_capture_btn"):  # Fixed unique key
             st.session_state.capture_running = not st.session_state.capture_running
@@ -359,8 +360,12 @@ def periodic_capture_ui():
                     st.toast("🔄 Auto-capture completed!", icon="📸")
             
         with col2:
-            seconds_left = 10 - (datetime.now() - st.session_state.last_capture_time).seconds
-            st.write(f"⏱️ Next capture in: {seconds_left} seconds")
+            if st.session_state.last_capture_time:
+                elapsed = (datetime.now() - st.session_state.last_capture_time).seconds
+                seconds_left = max(0, 10 - elapsed)
+                st.write(f"⏱️ Next capture in: {seconds_left} seconds")
+            else:
+                st.write("⏱️ Preparing first capture...")
 
 # === Teacher Tools ===
 def teacher_tools():
@@ -466,7 +471,7 @@ def teacher_feedback_ui():
             }])
 
             if os.path.exists(FEEDBACK_FILE):
-                df_existing = pd.read_csv(FEEDBOFF_FILE)
+                df_existing = pd.read_csv(FEEDBACK_FILE)  # Fixed typo here
                 df_combined = pd.concat([df_existing, feedback_data], ignore_index=True)
             else:
                 df_combined = feedback_data
@@ -645,9 +650,13 @@ def run_chatbot():
         # Display image and analysis
         if st.session_state.last_analysis:
             try:
-                img = Image.open(st.session_state.last_image_path)
-                st.image(img, caption=f"📸 {st.session_state.last_analysis_time.strftime('%Y-%m-%d %H:%M:%S')}",
-                         use_container_width=True)
+                # Check if file exists before opening
+                if os.path.exists(st.session_state.last_image_path):
+                    img = Image.open(st.session_state.last_image_path)
+                    st.image(img, caption=f"📸 {st.session_state.last_analysis_time.strftime('%Y-%m-%d %H:%M:%S')}",
+                             use_container_width=True)
+                else:
+                    st.warning("Image file not found")
             except Exception as e:
                 st.warning(f"Could not display image: {str(e)}")
 
