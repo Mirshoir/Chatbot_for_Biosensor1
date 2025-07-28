@@ -593,7 +593,7 @@ def run_chatbot():
         task_type = st.selectbox(
             "Select teaching activity type:",
             ["Lecture", "Group Work", "Assessment", "Discussion", "Practical"],
-            key="task_type_select"
+            key="task_type_select_main"
         )
         
         # Driver Data Streams
