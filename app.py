@@ -17,9 +17,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Diagnostic output
-st.sidebar.write(f"Current directory: {os.getcwd()}")
-st.sidebar.write(f"Files in directory: {', '.join(os.listdir())}")
 
 # --- Sidebar Navigation ---
 st.sidebar.title("Navigation")
