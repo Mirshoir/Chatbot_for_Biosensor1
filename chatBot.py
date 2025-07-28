@@ -279,6 +279,7 @@ def show_engagement_trends():
             name='Raw Score',
             marker=dict(color='#1f77b4')
         )
+                     )
         fig.add_trace(go.Scatter(
             x=df['timestamp'], 
             y=df['rolling_avg'], 
