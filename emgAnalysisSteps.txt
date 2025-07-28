@@ -1,0 +1,11 @@
+EMG Analysis Results
+--------------------
+EMG_CH1 - Percentage of time under high muscle activation: 6.63%
+EMG_CH2 - Percentage of time under high muscle activation: 5.37%
+
+Explanation of Muscle Activation Levels:
+
+    - The **EMG Envelope** represents the overall muscle activity level by taking the absolute value or using the Hilbert transform of the EMG signal.
+    - The **activation threshold** is calculated as the mean plus one standard deviation of the envelope values. This threshold helps identify periods of significant muscle activity.
+    - **High Activation** indicates that the muscle is exerting force above the normal resting level, suggesting periods of physical effort or tension.
+    

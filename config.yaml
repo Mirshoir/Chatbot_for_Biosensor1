@@ -1,0 +1,10 @@
+# Paths for result directories and files
+dashboard_results_path: "./results/emotional_state_logs"
+ecg_results_file: "./results/uploaded_data_ecg/ecgAnalysisSteps.txt"
+emg_results_file: "./results/uploaded_data_emg/emgAnalysisSteps.txt"
+ollama_api_key_path: "./keys/ollama_key.txt"
+
+# LLM Model Configuration
+models:
+  cognitive_load: "mistral"
+  user_specific: "llama3.2"

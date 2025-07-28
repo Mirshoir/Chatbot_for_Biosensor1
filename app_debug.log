@@ -1,0 +1,21 @@
+2025-07-20 12:46:43,388 - INFO - Creating ChromaDB client
+2025-07-20 12:46:43,426 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-07-20 12:46:43,508 - INFO - Creating DeepMind agent
+2025-07-20 12:47:20,239 - INFO - Creating DeepMind agent
+2025-07-20 12:47:33,567 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/config "HTTP/1.1 200 OK"
+2025-07-20 12:47:34,903 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/info?serialize=False "HTTP/1.1 200 OK"
+2025-07-20 12:47:36,340 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/heartbeat/dc72ae04-9264-445b-907e-1cdb75f5cd5c "HTTP/1.1 200 OK"
+2025-07-20 12:47:37,220 - INFO - HTTP Request: POST https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/upload "HTTP/1.1 200 OK"
+2025-07-20 12:47:39,238 - INFO - HTTP Request: GET https://api.gradio.app/gradio-messaging/en "HTTP/1.1 200 OK"
+2025-07-20 12:47:42,431 - INFO - HTTP Request: POST https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/queue/join "HTTP/1.1 200 OK"
+2025-07-20 12:47:43,754 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/queue/data?session_hash=dc72ae04-9264-445b-907e-1cdb75f5cd5c "HTTP/1.1 200 OK"
+2025-07-20 12:47:53,177 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/config "HTTP/1.1 200 OK"
+2025-07-20 12:47:54,432 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/info?serialize=False "HTTP/1.1 200 OK"
+2025-07-20 12:47:55,905 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/heartbeat/9d3d2f24-2880-4c3f-bae8-c4057f6c8638 "HTTP/1.1 200 OK"
+2025-07-20 12:47:56,704 - INFO - HTTP Request: POST https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/upload "HTTP/1.1 200 OK"
+2025-07-20 12:47:57,980 - INFO - HTTP Request: POST https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/queue/join "HTTP/1.1 200 OK"
+2025-07-20 12:47:59,232 - INFO - HTTP Request: GET https://ybelkada-llava-1-5-dlai.hf.space/gradio_api/queue/data?session_hash=9d3d2f24-2880-4c3f-bae8-c4057f6c8638 "HTTP/1.1 200 OK"
+2025-07-20 12:48:00,393 - INFO - Calling Mistral API with prompt: You are an expert assistant helping with cognitive load and classroom insights.
+User says: I am feel...
+2025-07-20 12:48:04,675 - INFO - HTTP Request: POST https://api.mistral.ai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-20 12:48:04,676 - INFO - Received response from Mistral API

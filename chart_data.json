@@ -1,0 +1,55 @@
+{
+  "cognitive_load_history": [
+    {
+      "timestamp": "2025-07-20T13:00:58.952545",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of stress or engagement, suggesting a moderate cognitive load. The lack of visual cues or distractions does not provide additional information to alter this assessment."
+    },
+    {
+      "timestamp": "2025-07-20T13:01:13.774544",
+      "load_level": "Medium",
+      "explanation": "The emotional state is at a medium level (50), and the visual analysis does not indicate any significant distractions or emotional cues, suggesting a moderate cognitive load."
+    },
+    {
+      "timestamp": "2025-07-20T13:01:24.233228",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of cognitive load (Level 50). The absence of behavioral and environmental data, as well as distractions and emotional cues, suggests a neutral environment that does not significantly impact cognitive load."
+    },
+    {
+      "timestamp": "2025-07-20T13:01:52.041418",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of stress or engagement, suggesting a moderate cognitive load. The lack of visual cues or distractions does not provide additional information to alter this assessment."
+    },
+    {
+      "timestamp": "2025-07-20T13:02:40.691239",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of cognitive load (Level 50). The lack of behavioral and environmental data from the visual analysis suggests no additional stressors, maintaining the medium cognitive load assessment."
+    },
+    {
+      "timestamp": "2025-07-20T13:02:51.235265",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of cognitive load (Level 50). The lack of visual cues, distractions, and behavioral data suggests a neutral environment, which does not significantly alter the cognitive load inference."
+    },
+    {
+      "timestamp": "2025-07-20T13:02:55.300651",
+      "load_level": "Medium",
+      "explanation": "The emotional state is at a medium level (50), and the visual analysis does not indicate any significant distractions or emotional cues, suggesting a moderate cognitive load."
+    },
+    {
+      "timestamp": "2025-07-20T13:15:09.590155",
+      "load_level": "Low",
+      "explanation": "The emotional state is positive, indicated by a high HRV_SDNN (237.21 ms) and a low GSR_Mean (0.0000 \u95dcS), suggesting a relaxed and calm state. The visual analysis does not show any significant distractions or emotional cues, further supporting a low cognitive load."
+    },
+    {
+      "timestamp": "2025-07-20T13:23:03.121158",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of stress or engagement, suggesting a moderate cognitive load. The lack of visual cues or distractions does not provide additional information to alter this assessment."
+    },
+    {
+      "timestamp": "2025-07-20T13:23:20.876513",
+      "load_level": "Medium",
+      "explanation": "The emotional state indicates a medium level of cognitive load (Level 50). The absence of behavioral and environmental data, as well as distractions and emotional cues, suggests a neutral environment that does not significantly alter the cognitive load assessment."
+    }
+  ],
+  "last_updated": "2025-07-20T13:23:20.876513"
+}

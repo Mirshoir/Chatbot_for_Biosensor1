@@ -1,0 +1,4 @@
+*.dll filter=lfs diff=lfs merge=lfs -text
+*.lib filter=lfs diff=lfs merge=lfs -text
+C:/Users/dtfygu876/prompt_codes/csvChunking/Chatbot_for_Biosensor filter=lfs diff=lfs merge=lfs -text
+data/ecg_data_asad.csv filter=lfs diff=lfs merge=lfs -text
