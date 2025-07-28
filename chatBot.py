@@ -554,6 +554,8 @@ def generate_session_report():
         st.error(f"Report generation error: {str(e)}")
 
 # === Main Chatbot UI ===
+# ... (previous imports and setup remain the same until the run_chatbot function)
+
 def run_chatbot():
     # Title with live indicator
     st.markdown("""
@@ -588,12 +590,12 @@ def run_chatbot():
     col1, col2 = st.columns([3, 2])
 
     with col1:
-        # Task type selector
+        # Task type selector - Made key unique
         st.subheader("Task Type")
         task_type = st.selectbox(
             "Select teaching activity type:",
             ["Lecture", "Group Work", "Assessment", "Discussion", "Practical"],
-            key="task_type_select"
+            key="main_task_type_select"  # Changed from task_type_select to main_task_type_select
         )
         
         # Driver Data Streams
@@ -604,16 +606,17 @@ def run_chatbot():
         with st.expander("DSR", expanded=True):
             cols = st.columns(3)
             with cols[0]:
-                st.metric("PPG", "2 mm")
+                st.metric("PPG", "2 mm", key="ppg_metric")
             with cols[1]:
                 emotional_state = get_emotional_state().split("<br>")[0] if "<br>" in get_emotional_state() else get_emotional_state()
-                st.metric("Emotional State", emotional_state[:20] + "..." if len(emotional_state) > 20 else emotional_state)
+                st.metric("Emotional State", emotional_state[:20] + "..." if len(emotional_state) > 20 else emotional_state, 
+                         key="emotional_state_metric")
             with cols[2]:
                 if st.session_state.get("last_analysis"):
                     vlm_summary = st.session_state.last_analysis.get("behavior", "No analysis")[:20] + "..."
-                    st.metric("VLM", vlm_summary)
+                    st.metric("VLM", vlm_summary, key="vlm_metric")
                 else:
-                    st.metric("VLM", "No data")
+                    st.metric("VLM", "No data", key="vlm_empty_metric")
         
         # Demo indicator
         st.markdown("---")
@@ -629,7 +632,7 @@ def run_chatbot():
         # Camera input with unique key
         st.session_state.camera_image = st.camera_input(
             "Capture classroom image for VLM analysis", 
-            key="classroom_camera"
+            key="main_classroom_camera"  # Made unique
         )
 
         if st.session_state.camera_image is not None:
@@ -650,20 +653,16 @@ def run_chatbot():
         # Display image and analysis
         if st.session_state.last_analysis:
             try:
-                # Check if file exists before opening
-                if os.path.exists(st.session_state.last_image_path):
-                    img = Image.open(st.session_state.last_image_path)
-                    st.image(img, caption=f"📸 {st.session_state.last_analysis_time.strftime('%Y-%m-%d %H:%M:%S')}",
-                             use_container_width=True)
-                else:
-                    st.warning("Image file not found")
+                img = Image.open(st.session_state.last_image_path)
+                st.image(img, caption=f"📸 {st.session_state.last_analysis_time.strftime('%Y-%m-%d %H:%M:%S')}",
+                         use_container_width=True, key="analysis_image_display")
             except Exception as e:
                 st.warning(f"Could not display image: {str(e)}")
 
             # Display VLM analysis
             display_vlm_analysis(st.session_state.last_analysis)
         else:
-            st.info("No image analysis available. Capture an image to begin.")
+            st.info("No image analysis available. Capture an image to begin.", key="no_analysis_info")
 
         # Cognitive Load Dashboard
         show_cognitive_dashboard()
@@ -679,9 +678,9 @@ def run_chatbot():
         st.subheader("Recommendations")
         st.markdown("**Advisor Agent**")
         if st.session_state.get("advisor_response"):
-            st.info(st.session_state.advisor_response)
+            st.info(st.session_state.advisor_response, key="advisor_response_display")
         else:
-            st.warning("Generate recommendations using Teacher Tools")
+            st.warning("Generate recommendations using Teacher Tools", key="no_advisor_warning")
         
         # Teacher Feedback
         teacher_feedback_ui()
@@ -693,13 +692,13 @@ def run_chatbot():
 
         # Student Interaction
         st.subheader("💬 Student Interaction")
-        user_input = st.text_input("Enter your message:", key="user_input")
+        user_input = st.text_input("Enter your message:", key="student_interaction_input")
         st.session_state.current_user_input = user_input
 
-        # Generate Cognitive Support Plan
-        if st.button("🧠 Generate Cognitive Support Plan", key="deepmind_button"):
+        # Generate Cognitive Support Plan - Made key unique
+        if st.button("🧠 Generate Cognitive Support Plan", key="generate_support_plan_btn"):
             if not user_input:
-                st.warning("Please enter your message.")
+                st.warning("Please enter your message.", key="empty_input_warning")
             else:
                 logger.info("Starting DeepMind solution generation")
                 # Initialize processing state
@@ -726,24 +725,24 @@ def run_chatbot():
         # Display DeepMind results
         if st.session_state.get("deepmind_response"):
             st.subheader("💡 Cognitive Support Plan")
-            st.markdown(st.session_state.deepmind_response)
+            st.markdown(st.session_state.deepmind_response, key="deepmind_response_display")
 
         if st.session_state.get("deepmind_error"):
-            st.error(st.session_state.deepmind_error)
+            st.error(st.session_state.deepmind_error, key="deepmind_error_display")
 
     # Processing status and cancellation
     if st.session_state.deepmind_processing:
         if st.session_state.processing_thread and st.session_state.processing_thread.is_alive():
-            st.info("⏳ Generating cognitive support plan... Please wait.")
+            st.info("⏳ Generating cognitive support plan... Please wait.", key="processing_info")
         else:
             try:
                 result = st.session_state.result_queue.get_nowait()
                 st.session_state.deepmind_response = result
                 st.session_state.deepmind_processing = False
-                st.success("✅ Cognitive support plan generated!")
+                st.success("✅ Cognitive support plan generated!", key="success_message")
                 logger.info("DeepMind solution generated successfully")
             except queue.Empty:
-                st.info("⏳ Waiting for processing results...")
+                st.info("⏳ Waiting for processing results...", key="waiting_info")
 
     # Save chat messages to ChromaDB
     if st.session_state.deepmind_response and st.session_state.current_user_input:
