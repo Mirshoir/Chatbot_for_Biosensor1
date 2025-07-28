@@ -244,6 +244,48 @@ def run_streaming(username, selected_port, duration_seconds):
     return csv_file_path
 
 
+def process_and_analyze(df):
+    col_map = {'Timestamp': 'Timestamp_Unix_CAL',
+               'GSR_Value': 'GSR_Skin_Conductance_CAL',
+               'PPG_Value': 'PPG_A13_CAL'}
+    
+    # Create a copy to avoid SettingWithCopyWarning
+    df = df.copy()
+    
+    # Rename columns only if needed
+    for orig, new in col_map.items():
+        if orig in df.columns and new not in df.columns:
+            df.rename(columns={orig: new}, inplace=True)
+
+    required_cols = ['Timestamp_Unix_CAL', 'GSR_Skin_Conductance_CAL', 'PPG_A13_CAL']
+    
+    if not all(col in df.columns for col in required_cols):
+        missing = [col for col in required_cols if col not in df.columns]
+        st.error(f"Missing required columns: {', '.join(missing)}")
+        return
+
+    # Handle timestamp conversion safely
+    df['Timestamp_Unix_CAL'] = pd.to_numeric(df['Timestamp_Unix_CAL'], errors='coerce')
+    
+    # Remove rows with invalid timestamps
+    df = df.dropna(subset=['Timestamp_Unix_CAL'])
+    
+    if df.empty:
+        st.error("No valid data after timestamp processing")
+        return
+
+    # Create datetime index
+    df['Timestamp'] = pd.to_datetime(df['Timestamp_Unix_CAL'], unit='ms', errors='coerce')
+    df = df.dropna(subset=['Timestamp'])
+    
+    if df.empty:
+        st.error("No valid timestamps after conversion")
+        return
+        
+    df = df.set_index('Timestamp', drop=True)
+    analyze_gsr_ppg_data(df)
+
+
 # Main dashboard app
 def gsr_ppg_app():
     st.title("GSR and PPG Real-Time Emotion Dashboard")
@@ -296,7 +338,7 @@ def gsr_ppg_app():
                 df = pd.read_csv(st.session_state.last_collected_file)
                 process_and_analyze(df)
             except Exception as e:
-                st.error(f"Error analyzing collected data: {e}")
+                st.error(f"Error analyzing collected data: {str(e)}")
 
     # ------------------------------------------
     # Upload Data for Analysis
@@ -304,37 +346,20 @@ def gsr_ppg_app():
     st.header("📤 Upload Data for Analysis")
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv", key="file_uploader")
 
-    def process_and_analyze(df):
-        col_map = {'Timestamp': 'Timestamp_Unix_CAL',
-                   'GSR_Value': 'GSR_Skin_Conductance_CAL',
-                   'PPG_Value': 'PPG_A13_CAL'}
-
-        for orig, new in col_map.items():
-            if orig in df.columns:
-                df.rename(columns={orig: new}, inplace=True)
-
-        required_cols = ['Timestamp_Unix_CAL', 'GSR_Skin_Conductance_CAL', 'PPG_A13_CAL']
-
-        if not all(col in df.columns for col in required_cols):
-            st.error("Missing required columns in file.")
-            return
-
-        df.dropna(inplace=True)
-        df['Timestamp_Unix_CAL'] = pd.to_numeric(df['Timestamp_Unix_CAL'], errors='coerce')
-        df['Timestamp'] = pd.to_datetime(df['Timestamp_Unix_CAL'], unit='ms', errors='coerce')
-        df.set_index('Timestamp', inplace=True)
-
-        filename = f"gsr_ppg_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        df.to_csv(os.path.join(DATA_STORAGE_DIR, filename))
-        st.write(f"Data saved as `{filename}` in `{DATA_STORAGE_DIR}`.")
-        analyze_gsr_ppg_data(df)
-
-    if uploaded_file:
+    if uploaded_file is not None:
         try:
-            df = pd.read_csv(uploaded_file)
+            # Save uploaded file to storage directory
+            save_path = os.path.join(DATA_STORAGE_DIR, uploaded_file.name)
+            with open(save_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            # Process the saved file
+            st.session_state.last_collected_file = save_path
+            df = pd.read_csv(save_path)
+            st.success(f"File saved successfully: {uploaded_file.name}")
             process_and_analyze(df)
         except Exception as e:
-            st.error(f"Error processing file: {e}")
+            st.error(f"Error processing file: {str(e)}")
 
     # ------------------------------------------
     # Re-analyze Stored Data
@@ -349,7 +374,7 @@ def gsr_ppg_app():
                 df = pd.read_csv(os.path.join(DATA_STORAGE_DIR, selected_file))
                 process_and_analyze(df)
             except Exception as e:
-                st.error(f"Error processing stored file: {e}")
+                st.error(f"Error processing stored file: {str(e)}")
     else:
         st.info("No stored files available.")
 
