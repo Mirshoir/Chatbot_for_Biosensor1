@@ -1,7 +1,10 @@
 # Fix SQLite version issue - MUST BE AT VERY TOP
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+try:
+    __import__('pysqlite3')
+    import sys
+    sys.modules['sqlite3'] = sys.modules['pysqlite3']  # Use get instead of pop
+except ImportError:
+    pass  # Fall back to built-in sqlite3 if pysqlite3 isn't available
 
 import streamlit as st
 import os
