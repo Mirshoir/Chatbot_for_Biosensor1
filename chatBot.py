@@ -4,7 +4,7 @@ import time
 import threading
 import queue
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
 import chromadb
 from image_processor import analyze_image_with_gradio
@@ -12,6 +12,9 @@ from deepMind import DeepMindAgent
 import pandas as pd
 import logging
 import plotly.express as px
+import plotly.graph_objects as go
+import numpy as np
+import schedule
 
 # Configure logging
 logging.basicConfig(filename='app_debug.log', level=logging.INFO,
@@ -27,10 +30,10 @@ IMAGE_ANALYSIS_FILE = os.path.join(DASHBOARD_RESULTS_PATH, "imageAnalysis.txt")
 CAPTURED_IMAGES_DIR = os.path.join(DASHBOARD_RESULTS_PATH, "captured_images")
 FEEDBACK_FILE = os.path.join(DASHBOARD_RESULTS_PATH, "teacher_feedback.csv")
 CHART_DATA_FILE = os.path.join(DASHBOARD_RESULTS_PATH, "chart_data.json")
+ADVISOR_FILE = os.path.join(DASHBOARD_RESULTS_PATH, "advisor_recommendations.json")
 
 os.makedirs(DASHBOARD_RESULTS_PATH, exist_ok=True)
 os.makedirs(CAPTURED_IMAGES_DIR, exist_ok=True)
-
 
 # === Clients ===
 @st.cache_resource(show_spinner=False)
@@ -38,19 +41,16 @@ def get_chroma_client():
     logger.info("Creating ChromaDB client")
     return chromadb.PersistentClient(path=CHROMA_PATH)
 
-
 @st.cache_resource(show_spinner=False)
 def get_deepmind_agent():
     logger.info("Creating DeepMind agent")
     return DeepMindAgent()
-
 
 if "chroma_client" not in st.session_state:
     st.session_state.chroma_client = get_chroma_client()
 
 collection = st.session_state.chroma_client.get_or_create_collection(name="chat_history")
 deep_agent = get_deepmind_agent()
-
 
 # === Utility Functions ===
 def save_chat_to_chroma(user_message: str, bot_response: str):
@@ -62,7 +62,6 @@ def save_chat_to_chroma(user_message: str, bot_response: str):
         ids=[base_id + "_user", base_id + "_bot"],
     )
     logger.info(f"Saved chat to Chroma: {user_message[:50]}...")
-
 
 def get_emotional_state():
     try:
@@ -81,7 +80,6 @@ def get_emotional_state():
     except Exception as e:
         logger.error(f"Emotional state error: {str(e)}")
         return f"Error reading emotional state: {e}"
-
 
 def analyze_and_save_image(image_bytes: bytes):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -112,7 +110,6 @@ def analyze_and_save_image(image_bytes: bytes):
         with open(IMAGE_ANALYSIS_FILE, "a", encoding="utf-8") as f:
             f.write(f"{timestamp}|{img_path}|{error_msg}\n")
         return None, None, error_msg
-
 
 def display_vlm_analysis(analysis_result):
     """Display VLM analysis in a structured format"""
@@ -183,7 +180,7 @@ def display_vlm_analysis(analysis_result):
                 else:
                     st.success("🟢 High engagement - good focus")
 
-
+# === Dashboard Functions ===
 def show_cognitive_dashboard():
     st.subheader("📊 Cognitive Load Dashboard")
 
@@ -240,7 +237,152 @@ def show_cognitive_dashboard():
         st.error(f"Dashboard error: {str(e)}")
         logger.error(f"Dashboard error: {str(e)}")
 
+def show_engagement_trends():
+    st.subheader("📈 Engagement Trends")
+    
+    try:
+        if not os.path.exists(IMAGE_ANALYSIS_FILE):
+            st.warning("No engagement data available yet")
+            return
+            
+        engagement_data = []
+        with open(IMAGE_ANALYSIS_FILE, "r") as f:
+            for line in f:
+                parts = line.strip().split('|')
+                if len(parts) >= 3:
+                    try:
+                        timestamp = datetime.strptime(parts[0], "%Y%m%d_%H%M%S")
+                        analysis = json.loads(parts[2])
+                        if "engagement_score" in analysis:
+                            engagement_data.append({
+                                "timestamp": timestamp,
+                                "engagement": analysis["engagement_score"]
+                            })
+                    except:
+                        continue
+        
+        if not engagement_data:
+            st.info("No engagement scores found in analysis data")
+            return
+            
+        df = pd.DataFrame(engagement_data)
+        df = df.sort_values('timestamp')
+        
+        # Create rolling average
+        df['rolling_avg'] = df['engagement'].rolling(window=3, min_periods=1).mean()
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df['timestamp'], 
+            y=df['engagement'], 
+            mode='markers+lines',
+            name='Raw Score',
+            marker=dict(color='#1f77b4')
+        )
+        fig.add_trace(go.Scatter(
+            x=df['timestamp'], 
+            y=df['rolling_avg'], 
+            mode='lines',
+            name='3-Point Avg',
+            line=dict(color='#ff7f0e', width=3))
+        
+        fig.update_layout(
+            title="Engagement Score Over Time",
+            xaxis_title="Time",
+            yaxis_title="Engagement Score",
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Engagement statistics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Current Engagement", f"{df['engagement'].iloc[-1]}/100")
+        with col2:
+            st.metric("Session High", f"{df['engagement'].max()}/100")
+        with col3:
+            st.metric("Session Low", f"{df['engagement'].min()}/100")
+            
+    except Exception as e:
+        st.error(f"Engagement dashboard error: {str(e)}")
+        logger.error(f"Engagement dashboard error: {str(e)}")
 
+def show_advisor_recommendations():
+    st.subheader("💡 Advisor Recommendations History")
+    
+    try:
+        if not os.path.exists(ADVISOR_FILE):
+            st.warning("No advisor recommendations available")
+            return
+            
+        with open(ADVISOR_FILE, "r") as f:
+            recommendations = json.load(f)
+            
+        if not recommendations:
+            st.info("No recommendations have been generated yet")
+            return
+            
+        for i, rec in enumerate(recommendations[-5:][::-1], 1):  # Show last 5
+            with st.expander(f"Recommendation {i} - {rec['timestamp']}", expanded=i==1):
+                st.markdown(f"**Cognitive State:** {rec.get('state', 'N/A')}")
+                st.markdown(f"**Load Level:** {rec.get('level', 'N/A')}")
+                st.markdown("**Recommendation:**")
+                st.info(rec['recommendation'])
+                
+                # Add feedback buttons
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("👍 Helpful", key=f"helpful_{i}"):
+                        rec['feedback'] = "helpful"
+                        st.success("Thanks for your feedback!")
+                with col2:
+                    if st.button("👎 Not Helpful", key=f"not_helpful_{i}"):
+                        rec['feedback'] = "not_helpful"
+                        st.warning("We'll improve our suggestions")
+                
+                # Save feedback
+                if 'feedback' in rec:
+                    with open(ADVISOR_FILE, "w") as f:
+                        json.dump(recommendations, f, indent=2)
+                        
+    except Exception as e:
+        st.error(f"Recommendations error: {str(e)}")
+        logger.error(f"Recommendations error: {str(e)}")
+
+# === Periodic Image Capture ===
+def start_periodic_capture():
+    if 'capture_running' not in st.session_state:
+        st.session_state.capture_running = False
+        st.session_state.last_capture_time = None
+        st.session_state.capture_thread = None
+        
+    if st.button("▶️ Start Auto Capture" if not st.session_state.capture_running else "⏹️ Stop Auto Capture", 
+                 key="auto_capture_btn"):
+        st.session_state.capture_running = not st.session_state.capture_running
+        
+    if st.session_state.capture_running:
+        current_time = datetime.now()
+        if (st.session_state.last_capture_time is None or 
+                (current_time - st.session_state.last_capture_time).seconds >= 10):
+            
+            # Simulate camera capture
+            if 'camera_image' in st.session_state and st.session_state.camera_image is not None:
+                image_bytes = st.session_state.camera_image.getvalue()
+                analysis_result, img_path, error = analyze_and_save_image(image_bytes)
+                if error:
+                    st.error(f"Auto capture failed: {error}")
+                else:
+                    st.session_state.last_analysis = analysis_result
+                    st.session_state.last_image_path = img_path
+                    st.session_state.last_analysis_time = datetime.now()
+                    st.session_state.last_capture_time = current_time
+                    st.toast("🔄 Auto-capture completed!", icon="📸")
+            
+        st.write(f"⏱️ Next capture in: {10 - (datetime.now() - st.session_state.last_capture_time).seconds if st.session_state.last_capture_time else 0} seconds")
+
+# === Teacher Tools ===
 def teacher_tools():
     st.subheader("🧑‍🏫 Teacher Tools")
 
@@ -297,12 +439,33 @@ State Inference: {state} - Level {level}
                     # Get advisor recommendations
                     advisor_response = deep_agent.get_cognitive_load_advisor(analysis)
                     st.session_state.advisor_response = advisor_response
+                    
+                    # Save recommendation
+                    recommendation = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "state": analysis.get("cognitive_load_level", "Unknown"),
+                        "level": analysis.get("cognitive_load_value", 0),
+                        "recommendation": advisor_response
+                    }
+                    
+                    # Load existing recommendations
+                    if os.path.exists(ADVISOR_FILE):
+                        with open(ADVISOR_FILE, "r") as f:
+                            recommendations = json.load(f)
+                    else:
+                        recommendations = []
+                    
+                    recommendations.append(recommendation)
+                    
+                    # Save back to file
+                    with open(ADVISOR_FILE, "w") as f:
+                        json.dump(recommendations, f, indent=2)
 
         if st.session_state.get("advisor_response"):
             st.subheader("Personalized Recommendations")
             st.info(st.session_state.advisor_response)
 
-
+# === Teacher Feedback ===
 def teacher_feedback_ui():
     st.subheader("🧑‍🏫 Teacher Feedback")
     st.markdown("**Was this app useful to you?**")
@@ -343,7 +506,6 @@ def teacher_feedback_ui():
         except Exception as e:
             st.error(f"Error reading feedback: {e}")
 
-
 # === Main Chatbot UI ===
 def run_chatbot():
     st.title("🧠 Avicenna - Cognitive Load & Classroom Insight System")
@@ -354,12 +516,18 @@ def run_chatbot():
         "deepmind_response", "deepmind_error", "last_captured_image",
         "chat_history", "deepmind_processing", "processing_thread",
         "result_queue", "current_user_input", "processing_start_time",
-        "current_task", "teacher_advice", "advisor_response"
+        "current_task", "teacher_advice", "advisor_response",
+        "camera_image", "capture_running", "last_capture_time"
     ]
 
     for key in init_keys:
         if key not in st.session_state:
-            st.session_state[key] = None if key != "chat_history" else []
+            if key == "chat_history":
+                st.session_state[key] = []
+            elif key == "capture_running":
+                st.session_state[key] = False
+            else:
+                st.session_state[key] = None
 
     # Main layout columns
     col1, col2 = st.columns([3, 2])
@@ -372,15 +540,22 @@ def run_chatbot():
 
         # Image Capture and Analysis
         st.subheader("📸 Classroom Image Analysis")
-        # Changed key here to fix duplicate key issue:
-        img_file = st.camera_input("Capture classroom image for VLM analysis", key="camera_input_1")
+        
+        # Start periodic capture controls
+        start_periodic_capture()
+        
+        # Camera input with unique key
+        st.session_state.camera_image = st.camera_input(
+            "Capture classroom image for VLM analysis", 
+            key="classroom_camera"
+        )
 
-        if img_file is not None:
-            if (st.session_state.last_captured_image != img_file.getvalue() or
+        if st.session_state.camera_image is not None:
+            if (st.session_state.last_captured_image != st.session_state.camera_image.getvalue() or
                     st.session_state.last_image_path is None):
 
-                st.session_state.last_captured_image = img_file.getvalue()
-                image_bytes = img_file.getvalue()
+                st.session_state.last_captured_image = st.session_state.camera_image.getvalue()
+                image_bytes = st.session_state.camera_image.getvalue()
                 analysis_result, img_path, error = analyze_and_save_image(image_bytes)
                 if error:
                     st.error(f"Image processing failed: {error}")
@@ -406,10 +581,16 @@ def run_chatbot():
 
         # Cognitive Load Dashboard
         show_cognitive_dashboard()
+        
+        # Engagement Trends Dashboard
+        show_engagement_trends()
 
     with col2:
         # Teacher Tools Section
         teacher_tools()
+        
+        # Advisor Recommendations History
+        show_advisor_recommendations()
 
         # Student Interaction
         st.subheader("💬 Student Interaction")
