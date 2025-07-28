@@ -370,11 +370,18 @@ def gsr_ppg_app():
     if stored_files:
         selected_file = st.selectbox("Select a file", stored_files, key="stored_files")
         if st.button("Analyze Selected File", key="analyze_stored"):
-            try:
-                df = pd.read_csv(os.path.join(DATA_STORAGE_DIR, selected_file))
-                process_and_analyze(df)
-            except Exception as e:
-                st.error(f"Error processing stored file: {str(e)}")
+            if not selected_file:
+                st.error("Please select a valid file")
+            else:
+                file_path = os.path.join(DATA_STORAGE_DIR, selected_file)
+                if not os.path.exists(file_path):
+                    st.error(f"File not found: {file_path}")
+                else:
+                    try:
+                        df = pd.read_csv(file_path)
+                        process_and_analyze(df)
+                    except Exception as e:
+                        st.error(f"Error processing stored file: {str(e)}")
     else:
         st.info("No stored files available.")
 
