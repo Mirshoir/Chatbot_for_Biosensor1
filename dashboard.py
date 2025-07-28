@@ -26,7 +26,7 @@ gsr_sampling_rate = 1000
 ppg_sampling_rate = 1000
 
 DATA_STORAGE_DIR = 'uploaded_data_gsr_ppg'
-EMOTIONAL_STATE_FILE = 'C:\\Users\\dtfygu876\\prompt_codes\\csvChunking\\Chatbot_for_Biosensor\\emotional_state.txt'
+EMOTIONAL_STATE_FILE = 'emotional_state.txt'
 
 # Ensure data storage path exists
 os.makedirs(DATA_STORAGE_DIR, exist_ok=True)
