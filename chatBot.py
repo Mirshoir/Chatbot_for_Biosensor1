@@ -182,7 +182,7 @@ def display_vlm_analysis(analysis_result):
 
 # === Dashboard Functions ===
 def show_cognitive_dashboard():
-    st.subheader("📊 Cognitive Load Dashboard")
+    st.subheader("📊 Cognitive Load History Graph")
 
     try:
         if not os.path.exists(CHART_DATA_FILE):
@@ -232,6 +232,23 @@ def show_cognitive_dashboard():
         )
 
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Add explanation and recommendations
+        if st.session_state.get("cognitive_analysis"):
+            analysis = st.session_state.cognitive_analysis
+            with st.expander("📝 Explanation & Recommendations", expanded=True):
+                cols = st.columns([1, 1])
+                with cols[0]:
+                    st.subheader("Explanation")
+                    explanation = analysis.get("explanation", "No explanation available")
+                    st.info(explanation)
+                
+                with cols[1]:
+                    st.subheader("Recommendations")
+                    if st.session_state.get("advisor_response"):
+                        st.info(st.session_state.advisor_response)
+                    else:
+                        st.warning("Run Cognitive Load Analysis to get recommendations")
 
     except Exception as e:
         st.error(f"Dashboard error: {str(e)}")
@@ -278,14 +295,14 @@ def show_engagement_trends():
             mode='markers+lines',
             name='Raw Score',
             marker=dict(color='#1f77b4')
-        ))  # Fixed parentheses
+        ))
         fig.add_trace(go.Scatter(
             x=df['timestamp'], 
             y=df['rolling_avg'], 
             mode='lines',
             name='3-Point Avg',
             line=dict(color='#ff7f0e', width=3)
-        ))  # Fixed parentheses
+        ))
         
         fig.update_layout(
             title="Engagement Score Over Time",
@@ -310,59 +327,19 @@ def show_engagement_trends():
         st.error(f"Engagement dashboard error: {str(e)}")
         logger.error(f"Engagement dashboard error: {str(e)}")
 
-def show_advisor_recommendations():
-    st.subheader("💡 Advisor Recommendations History")
-    
-    try:
-        if not os.path.exists(ADVISOR_FILE):
-            st.warning("No advisor recommendations available")
-            return
-            
-        with open(ADVISOR_FILE, "r") as f:
-            recommendations = json.load(f)
-            
-        if not recommendations:
-            st.info("No recommendations have been generated yet")
-            return
-            
-        for i, rec in enumerate(recommendations[-5:][::-1], 1):  # Show last 5
-            with st.expander(f"Recommendation {i} - {rec['timestamp']}", expanded=i==1):
-                st.markdown(f"**Cognitive State:** {rec.get('state', 'N/A')}")
-                st.markdown(f"**Load Level:** {rec.get('level', 'N/A')}")
-                st.markdown("**Recommendation:**")
-                st.info(rec['recommendation'])
-                
-                # Add feedback buttons
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("👍 Helpful", key=f"helpful_{i}"):
-                        rec['feedback'] = "helpful"
-                        st.success("Thanks for your feedback!")
-                with col2:
-                    if st.button("👎 Not Helpful", key=f"not_helpful_{i}"):
-                        rec['feedback'] = "not_helpful"
-                        st.warning("We'll improve our suggestions")
-                
-                # Save feedback
-                if 'feedback' in rec:
-                    with open(ADVISOR_FILE, "w") as f:
-                        json.dump(recommendations, f, indent=2)
-                        
-    except Exception as e:
-        st.error(f"Recommendations error: {str(e)}")
-        logger.error(f"Recommendations error: {str(e)}")
-
 # === Periodic Image Capture ===
-def start_periodic_capture():
+def periodic_capture_ui():
+    """UI for periodic capture with unique key"""
     if 'capture_running' not in st.session_state:
         st.session_state.capture_running = False
         st.session_state.last_capture_time = None
-        st.session_state.capture_thread = None
         
-    if st.button("▶️ Start Auto Capture" if not st.session_state.capture_running else "⏹️ Stop Auto Capture", 
-                 key="auto_capture_btn"):
-        st.session_state.capture_running = not st.session_state.capture_running
-        
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("▶️ Start Auto Capture" if not st.session_state.capture_running else "⏹️ Stop Auto Capture", 
+                     key="unique_auto_capture_btn"):  # Fixed unique key
+            st.session_state.capture_running = not st.session_state.capture_running
+            
     if st.session_state.capture_running:
         current_time = datetime.now()
         if (st.session_state.last_capture_time is None or 
@@ -381,14 +358,15 @@ def start_periodic_capture():
                     st.session_state.last_capture_time = current_time
                     st.toast("🔄 Auto-capture completed!", icon="📸")
             
-        st.write(f"⏱️ Next capture in: {10 - (datetime.now() - st.session_state.last_capture_time).seconds if st.session_state.last_capture_time else 0} seconds")
+        with col2:
+            seconds_left = 10 - (datetime.now() - st.session_state.last_capture_time).seconds
+            st.write(f"⏱️ Next capture in: {seconds_left} seconds")
 
 # === Teacher Tools ===
 def teacher_tools():
-    st.subheader("🧑‍🏫 Teacher Tools")
-
-    # Cognitive Load Assessment
-    with st.expander("📝 Cognitive Load Assessment", expanded=True):
+    with st.expander("🧑‍🏫 Teacher Tools", expanded=True):
+        # Cognitive Load Assessment
+        st.subheader("📝 Cognitive Load Assessment")
         col1, col2 = st.columns(2)
         with col1:
             state = st.radio("Cognitive Load State",
@@ -397,7 +375,7 @@ def teacher_tools():
         with col2:
             level = st.slider("Cognitive Load Level", 0, 100, 50)
 
-        if st.button("💾 Save Assessment"):
+        if st.button("💾 Save Assessment", key="save_assessment_btn"):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             entry = f"""
 === Emotional Analysis Entry ===
@@ -408,8 +386,8 @@ State Inference: {state} - Level {level}
                 f.write(entry)
             st.success("Assessment saved successfully!")
 
-    # Teaching Advisor
-    with st.expander("💡 Teaching Advisor", expanded=True):
+        # Teaching Advisor
+        st.subheader("💡 Teaching Advisor")
         task_options = ["Lecture", "Quiz", "Group Discussion", "Self-study", "Practical Work"]
         current_task = st.selectbox("Select current task type:", task_options, key="task_select")
         st.session_state.current_task = current_task
@@ -423,13 +401,12 @@ State Inference: {state} - Level {level}
                 st.warning("Please select a task type first")
 
         if st.session_state.get("teacher_advice"):
-            st.subheader("Teaching Recommendations")
             st.info(st.session_state.teacher_advice)
 
-    # Cognitive Load Advisor
-    with st.expander("🧠 Cognitive Load Advisor", expanded=True):
+        # Cognitive Load Advisor
+        st.subheader("🧠 Cognitive Load Advisor")
         st.info("Get personalized suggestions based on current cognitive load")
-        if st.button("📊 Generate Advisor Recommendations"):
+        if st.button("📊 Generate Advisor Recommendations", key="advisor_btn"):
             with st.spinner("Analyzing cognitive load..."):
                 # Get cognitive load analysis
                 analysis = deep_agent.get_cognitive_load_analysis()
@@ -463,53 +440,125 @@ State Inference: {state} - Level {level}
                         json.dump(recommendations, f, indent=2)
 
         if st.session_state.get("advisor_response"):
-            st.subheader("Personalized Recommendations")
             st.info(st.session_state.advisor_response)
 
 # === Teacher Feedback ===
 def teacher_feedback_ui():
-    st.subheader("🧑‍🏫 Teacher Feedback")
-    st.markdown("**Was this app useful to you?**")
-    col1, col2 = st.columns(2)
-    with col1:
-        useful = st.button("👍 Yes", key="feedback_yes")
-    with col2:
-        not_useful = st.button("👎 No", key="feedback_no")
+    with st.expander("📄 Teacher Feedback", expanded=False):
+        st.subheader("🧑‍🏫 Teacher Feedback")
+        st.markdown("**Was this app useful to you?**")
+        col1, col2 = st.columns(2)
+        with col1:
+            useful = st.button("👍 Yes", key="feedback_yes")
+        with col2:
+            not_useful = st.button("👎 No", key="feedback_no")
 
-    feedback_flag = useful or not_useful
-    feedback_value = useful and not not_useful
-    suggestion = st.text_area("Any suggestion or comment?", key="suggestion_input")
+        feedback_flag = useful or not_useful
+        feedback_value = useful and not not_useful
+        suggestion = st.text_area("Any suggestion or comment?", key="suggestion_input")
 
-    if feedback_flag:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        feedback_data = pd.DataFrame([{
-            "timestamp": timestamp,
-            "useful": "Yes" if feedback_value else "No",
-            "suggestion": suggestion.strip() or "None"
-        }])
+        if feedback_flag:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            feedback_data = pd.DataFrame([{
+                "timestamp": timestamp,
+                "useful": "Yes" if feedback_value else "No",
+                "suggestion": suggestion.strip() or "None"
+            }])
+
+            if os.path.exists(FEEDBACK_FILE):
+                df_existing = pd.read_csv(FEEDBOFF_FILE)
+                df_combined = pd.concat([df_existing, feedback_data], ignore_index=True)
+            else:
+                df_combined = feedback_data
+
+            df_combined.to_csv(FEEDBACK_FILE, index=False)
+            st.success("✅ Thank you for your feedback!")
+            logger.info(f"Feedback received: useful={feedback_value}")
 
         if os.path.exists(FEEDBACK_FILE):
-            df_existing = pd.read_csv(FEEDBACK_FILE)
-            df_combined = pd.concat([df_existing, feedback_data], ignore_index=True)
-        else:
-            df_combined = feedback_data
+            st.markdown("---")
+            st.markdown("📋 **Recent Feedback**")
+            try:
+                df = pd.read_csv(FEEDBACK_FILE)
+                st.dataframe(df.tail(5))
+            except Exception as e:
+                st.error(f"Error reading feedback: {e}")
 
-        df_combined.to_csv(FEEDBACK_FILE, index=False)
-        st.success("✅ Thank you for your feedback!")
-        logger.info(f"Feedback received: useful={feedback_value}")
+# === Session Report ===
+def generate_session_report():
+    st.subheader("📝 Session Summary Report")
+    
+    try:
+        report_data = {
+            "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "engagement": "N/A",
+            "cognitive_load": "N/A",
+            "distractions": 0,
+            "key_observations": []
+        }
+        
+        # Get engagement data
+        if os.path.exists(IMAGE_ANALYSIS_FILE):
+            with open(IMAGE_ANALYSIS_FILE, "r") as f:
+                for line in f:
+                    parts = line.strip().split('|')
+                    if len(parts) >= 3:
+                        try:
+                            analysis = json.loads(parts[2])
+                            if "engagement_score" in analysis:
+                                report_data["engagement"] = analysis["engagement_score"]
+                            if "distractions" in analysis:
+                                report_data["distractions"] = len(analysis["distractions"])
+                        except:
+                            continue
+        
+        # Get cognitive load data
+        if st.session_state.get("cognitive_analysis"):
+            analysis = st.session_state.cognitive_analysis
+            report_data["cognitive_load"] = analysis.get("cognitive_load_level", "N/A")
+            report_data["key_observations"].append(analysis.get("explanation", ""))
+        
+        # Generate report
+        report = f"""
+# Session Summary Report
+**Date:** {datetime.now().strftime("%Y-%m-%d")}
 
-    if os.path.exists(FEEDBACK_FILE):
-        st.markdown("---")
-        st.markdown("📋 **Recent Feedback**")
-        try:
-            df = pd.read_csv(FEEDBACK_FILE)
-            st.dataframe(df.tail(5))
-        except Exception as e:
-            st.error(f"Error reading feedback: {e}")
+## Key Metrics
+- **Average Engagement:** {report_data['engagement']}/100
+- **Cognitive Load Level:** {report_data['cognitive_load']}
+- **Distractions Detected:** {report_data['distractions']}
+
+## Observations
+{st.session_state.get("advisor_response", "No observations recorded")}
+
+## Recommendations
+{st.session_state.get("teacher_advice", "No recommendations available")}
+        """
+        
+        st.markdown(report)
+        
+        # Download button
+        st.download_button(
+            label="📥 Download Report",
+            data=report,
+            file_name=f"session_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+            mime="text/markdown"
+        )
+        
+    except Exception as e:
+        st.error(f"Report generation error: {str(e)}")
 
 # === Main Chatbot UI ===
 def run_chatbot():
-    st.title("🧠 Avicenna - Cognitive Load & Classroom Insight System")
+    # Title with live indicator
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+        <h1 style="margin: 0;">🧠 Avicenna - Cognitive Load & Classroom Insight System</h1>
+        <span style="background-color: #ff4b4b; color: white; padding: 3px 8px; border-radius: 12px; font-size: 14px;">
+            LIVE
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Initialize session state keys
     init_keys = [
@@ -534,16 +583,43 @@ def run_chatbot():
     col1, col2 = st.columns([3, 2])
 
     with col1:
-        # Biometric Summary
-        emotional_state_text = get_emotional_state()
-        with st.expander("📊 Biometric Data Summary", expanded=True):
-            st.markdown(f"- **Latest Emotional State:**<br>{emotional_state_text}", unsafe_allow_html=True)
-
-        # Image Capture and Analysis
-        st.subheader("📸 Classroom Image Analysis")
+        # Task type selector
+        st.subheader("Task Type")
+        task_type = st.selectbox(
+            "Select teaching activity type:",
+            ["Lecture", "Group Work", "Assessment", "Discussion", "Practical"],
+            key="task_type_select"
+        )
         
-        # Start periodic capture controls
-        start_periodic_capture()
+        # Driver Data Streams
+        st.subheader("Driver Data Streams")
+        st.markdown("**Data stream: live**")
+        
+        # DSR Section
+        with st.expander("DSR", expanded=True):
+            cols = st.columns(3)
+            with cols[0]:
+                st.metric("PPG", "2 mm")
+            with cols[1]:
+                emotional_state = get_emotional_state().split("<br>")[0] if "<br>" in get_emotional_state() else get_emotional_state()
+                st.metric("Emotional State", emotional_state[:20] + "..." if len(emotional_state) > 20 else emotional_state)
+            with cols[2]:
+                if st.session_state.get("last_analysis"):
+                    vlm_summary = st.session_state.last_analysis.get("behavior", "No analysis")[:20] + "..."
+                    st.metric("VLM", vlm_summary)
+                else:
+                    st.metric("VLM", "No data")
+        
+        # Demo indicator
+        st.markdown("---")
+        st.markdown("### Demo #2")
+        st.markdown("---")
+        
+        # Image Capture and Analysis
+        st.subheader("Cognitive Load")
+        
+        # Periodic capture UI
+        periodic_capture_ui()
         
         # Camera input with unique key
         st.session_state.camera_image = st.camera_input(
@@ -590,8 +666,21 @@ def run_chatbot():
         # Teacher Tools Section
         teacher_tools()
         
-        # Advisor Recommendations History
-        show_advisor_recommendations()
+        # Advisor Recommendations
+        st.subheader("Recommendations")
+        st.markdown("**Advisor Agent**")
+        if st.session_state.get("advisor_response"):
+            st.info(st.session_state.advisor_response)
+        else:
+            st.warning("Generate recommendations using Teacher Tools")
+        
+        # Teacher Feedback
+        teacher_feedback_ui()
+        
+        # Reports section
+        st.subheader("Reports")
+        st.markdown("**Session summary**")
+        generate_session_report()
 
         # Student Interaction
         st.subheader("💬 Student Interaction")
@@ -632,38 +721,6 @@ def run_chatbot():
 
         if st.session_state.get("deepmind_error"):
             st.error(st.session_state.deepmind_error)
-
-        # Cognitive Load Analysis
-        st.subheader("📈 Cognitive Load Analysis")
-        if st.button("🧪 Run Cognitive Load Analysis"):
-            with st.spinner("Analyzing cognitive load..."):
-                analysis = deep_agent.get_cognitive_load_analysis()
-
-                if "error" in analysis:
-                    st.error(f"Analysis failed: {analysis['error']}")
-                else:
-                    st.session_state.cognitive_analysis = analysis
-
-        if st.session_state.get("cognitive_analysis"):
-            analysis = st.session_state.cognitive_analysis
-            level = analysis.get("cognitive_load_level", "Unknown")
-            explanation = analysis.get("explanation", "No explanation")
-
-            # Display with color coding
-            if level == "Low":
-                st.success(f"**Cognitive Load Level:** 🟢 {level}")
-            elif level == "Medium":
-                st.warning(f"**Cognitive Load Level:** 🟡 {level}")
-            elif level == "High":
-                st.error(f"**Cognitive Load Level:** 🔴 {level}")
-            else:
-                st.info(f"**Cognitive Load Level:** {level}")
-
-            st.info(f"**Explanation:** {explanation}")
-
-        # Teacher Feedback
-        with st.expander("📄 Teacher Feedback", expanded=False):
-            teacher_feedback_ui()
 
     # Processing status and cancellation
     if st.session_state.deepmind_processing:
