@@ -49,7 +49,9 @@ emotion_model = load_emotion_model()
 
 # Save emotional state with timestamp
 def save_emotional_state(emotional_state, sdnn=None, gsr_mean=None, output_file=EMOTIONAL_STATE_FILE):
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    dir_path = os.path.dirname(output_file)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
     timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(output_file, 'a', encoding='utf-8') as file:
         file.write(f"=== Emotional Analysis Entry ===\n")
@@ -364,7 +366,7 @@ def gsr_ppg_app():
     # ------------------------------------------
     # Re-analyze Stored Data
     # ------------------------------------------
-            st.header("📂 Re-analyze Stored Data")
+    st.header("📂 Re-analyze Stored Data")
     stored_files = [f for f in os.listdir(DATA_STORAGE_DIR) if f.endswith('.csv')]
 
     if stored_files:
@@ -386,6 +388,7 @@ def gsr_ppg_app():
                         st.error(f"Error processing stored file: {str(e)}")
     else:
         st.info("No stored files available.")
+
 
 if __name__ == "__main__":
     gsr_ppg_app()
