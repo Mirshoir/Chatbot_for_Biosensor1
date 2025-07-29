@@ -1,8 +1,23 @@
-#image_processor.py
+# image_processor.py
 
-from gradio_client import Client, handle_file
+import os
+from PIL import Image
+from LLaVA.llava.conversation import conv_templates
+from LLaVA.llava.model.builder import load_pretrained_model
+from LLaVA.llava.utils import disable_torch_init
+from LLaVA.llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path
+import torch
 
-def analyze_image_with_gradio(image_path, prompt="""You are a Vision-Language Model assistant.
+# Load model once
+disable_torch_init()
+model_path = "LLaVA/weights/llava-v1.5-7b"  # adjust this to your actual model dir
+tokenizer, model, processor, context_len = load_pretrained_model(
+    model_path, model_base=None, model_name="llava-v1.5-7b"
+)
+
+def analyze_image_with_llava(image_path: str, prompt: str = None):
+    if prompt is None:
+        prompt = """You are a Vision-Language Model assistant.
 Your task is to detect any visual signs that might affect the user's cognitive load.
 Analyze the image for:
 - Distractions in the background (other screens, phone, clutter)
@@ -14,36 +29,30 @@ Output a short summary:
 - Environment distractions: [describe]
 - User posture: [describe]
 - Facial cues: [describe]
-- Any other factor that might impact focus. """):
-    try:
-        print("Initializing primary Gradio client (ybelkada/llava-1.5-dlai)...")
-        client = Client("ybelkada/llava-1.5-dlai")
+- Any other factor that might impact focus."""
 
-        result = client.predict(
-            text=prompt,
-            image=handle_file(image_path),
-            api_name="/predict"
+    image = Image.open(image_path).convert("RGB")
+
+    # Setup conversation template
+    conv = conv_templates["llava_v1"].copy()
+    conv.append_message(conv.roles[0], prompt)
+    conv.append_message(conv.roles[1], None)
+    prompt_text = conv.get_prompt()
+
+    image_tensor = process_images([image], processor, model.config)
+    image_tensor = image_tensor.to(model.device, dtype=torch.float16)
+
+    input_ids = tokenizer_image_token(prompt_text, tokenizer, IMAGE_TOKEN_INDEX=32000, return_tensors="pt").unsqueeze(0).to(model.device)
+
+    # Generate
+    with torch.no_grad():
+        output_ids = model.generate(
+            input_ids=input_ids,
+            images=image_tensor,
+            do_sample=True,
+            temperature=0.2,
+            max_new_tokens=512
         )
 
-        print("Received response from primary client.")
-        return result
-
-    except Exception as e:
-        print(f"Primary client error: {e}")
-        print("Switching to fallback client (Mirshoir/llava-1.5-dlai)...")
-
-        try:
-            client = Client("Mirshoir/llava-1.5-dlai")
-
-            result = client.predict(
-                text=prompt,
-                image=handle_file(image_path),
-                api_name="/predict"
-            )
-
-            print("Received response from fallback client.")
-            return result
-
-        except Exception as e2:
-            print(f"Fallback client error: {e2}")
-            return f"Error using both clients: {e} | {e2}"
+    output = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
+    return output
