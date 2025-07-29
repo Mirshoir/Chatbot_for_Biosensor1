@@ -113,20 +113,31 @@ def analyze_and_save_image(image_bytes: bytes):
 
 def display_vlm_analysis(analysis_result):
     """Display VLM analysis in a structured format"""
-    if not analysis_result or ("error" in analysis_result if isinstance(analysis_result, dict) else False):
-        if isinstance(analysis_result, dict):
-            error = analysis_result.get("error", "Unknown error")
-        else:
-            error = str(analysis_result)
+    # Handle null/empty cases first
+    if not analysis_result:
+        st.warning("No analysis result available")
+        return
+    
+    # Handle error cases
+    if isinstance(analysis_result, dict) and "error" in analysis_result:
+        error = analysis_result.get("error", "Unknown error")
         st.error(f"Analysis error: {error}")
         return
+    elif isinstance(analysis_result, str) and "error" in analysis_result.lower():
+        st.error(f"Analysis error: {analysis_result}")
+        return
 
-    # Handle both structured dict and legacy string output
+    # Handle legacy string output
     if isinstance(analysis_result, str):
-        # Legacy format - display as is
         st.info(analysis_result)
         return
 
+    # At this point, analysis_result should be a dictionary
+    if not isinstance(analysis_result, dict):
+        st.error(f"Unexpected analysis result format: {type(analysis_result)}")
+        return
+
+    # Now we can safely access dictionary methods
     with st.expander("🔍 VLM Analysis Details", expanded=True):
         cols = st.columns(2)
 
@@ -179,7 +190,6 @@ def display_vlm_analysis(analysis_result):
                     st.warning("🟡 Medium engagement - monitor closely")
                 else:
                     st.success("🟢 High engagement - good focus")
-
 # === Dashboard Functions ===
 def show_cognitive_dashboard():
     st.subheader("📊 Cognitive Load History Graph")
