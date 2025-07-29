@@ -364,12 +364,12 @@ def gsr_ppg_app():
     # ------------------------------------------
     # Re-analyze Stored Data
     # ------------------------------------------
-        st.header("📂 Re-analyze Stored Data")
+            st.header("📂 Re-analyze Stored Data")
     stored_files = [f for f in os.listdir(DATA_STORAGE_DIR) if f.endswith('.csv')]
 
     if stored_files:
-        selection_options = ["-- Select a file --"] + stored_files
-        selected_file = st.selectbox("Select a file", selection_options, key="stored_files")
+        file_options = ["-- Select a file --"] + stored_files
+        selected_file = st.selectbox("Select a file", file_options, key="stored_files")
 
         if st.button("Analyze Selected File", key="analyze_stored"):
             if selected_file == "-- Select a file --":
