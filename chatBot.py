@@ -338,7 +338,7 @@ def periodic_capture_ui():
     with col1:
         # Use unique key here
         if st.button("▶️ Start Auto Capture" if not st.session_state.capture_running else "⏹️ Stop Auto Capture", 
-                     key="unique_auto_capture_btn"):  # Fixed unique key
+                     key="periodic_capture_toggle_btn"):  # Fixed unique key
             st.session_state.capture_running = not st.session_state.capture_running
             
     if st.session_state.capture_running:
@@ -376,9 +376,11 @@ def teacher_tools():
         with col1:
             state = st.radio("Cognitive Load State",
                              ["Overloaded", "Medium", "Focus"],
-                             index=1)
+                             index=1,
+                             key="cognitive_state_radio")
         with col2:
-            level = st.slider("Cognitive Load Level", 0, 100, 50)
+            level = st.slider("Cognitive Load Level", 0, 100, 50,
+                              key="cognitive_level_slider")
 
         if st.button("💾 Save Assessment", key="save_assessment_btn"):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -394,7 +396,7 @@ State Inference: {state} - Level {level}
         # Teaching Advisor
         st.subheader("💡 Teaching Advisor")
         task_options = ["Lecture", "Quiz", "Group Discussion", "Self-study", "Practical Work"]
-        current_task = st.selectbox("Select current task type:", task_options, key="task_select")
+        current_task = st.selectbox("Select current task type:", task_options, key="teacher_task_select")
         st.session_state.current_task = current_task
 
         if st.button("🛠️ Get Teaching Strategies", key="teacher_advice_btn"):
@@ -454,9 +456,9 @@ def teacher_feedback_ui():
         st.markdown("**Was this app useful to you?**")
         col1, col2 = st.columns(2)
         with col1:
-            useful = st.button("👍 Yes", key="feedback_yes")
+            useful = st.button("👍 Yes", key="feedback_yes_btn")
         with col2:
-            not_useful = st.button("👎 No", key="feedback_no")
+            not_useful = st.button("👎 No", key="feedback_no_btn")
 
         feedback_flag = useful or not_useful
         feedback_value = useful and not not_useful
@@ -471,7 +473,7 @@ def teacher_feedback_ui():
             }])
 
             if os.path.exists(FEEDBACK_FILE):
-                df_existing = pd.read_csv(FEEDBACK_FILE)  # Fixed typo here
+                df_existing = pd.read_csv(FEEDBACK_FILE)
                 df_combined = pd.concat([df_existing, feedback_data], ignore_index=True)
             else:
                 df_combined = feedback_data
@@ -547,7 +549,8 @@ def generate_session_report():
             label="📥 Download Report",
             data=report,
             file_name=f"session_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-            mime="text/markdown"
+            mime="text/markdown",
+            key="report_download_btn"
         )
         
     except Exception as e:
@@ -593,7 +596,7 @@ def run_chatbot():
         task_type = st.selectbox(
             "Select teaching activity type:",
             ["Lecture", "Group Work", "Assessment", "Discussion", "Practical"],
-            key="task_type_select_main"
+            key="main_task_type_selector"  # Fixed unique key
         )
         
         # Driver Data Streams
