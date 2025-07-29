@@ -364,17 +364,19 @@ def gsr_ppg_app():
     # ------------------------------------------
     # Re-analyze Stored Data
     # ------------------------------------------
-    st.header("📂 Re-analyze Stored Data")
+        st.header("📂 Re-analyze Stored Data")
     stored_files = [f for f in os.listdir(DATA_STORAGE_DIR) if f.endswith('.csv')]
 
     if stored_files:
-        selected_file = st.selectbox("Select a file", stored_files, key="stored_files")
+        selection_options = ["-- Select a file --"] + stored_files
+        selected_file = st.selectbox("Select a file", selection_options, key="stored_files")
+
         if st.button("Analyze Selected File", key="analyze_stored"):
-            if not selected_file:
-                st.error("Please select a valid file")
+            if selected_file == "-- Select a file --":
+                st.error("Please select a valid CSV file from the list.")
             else:
                 file_path = os.path.join(DATA_STORAGE_DIR, selected_file)
-                if not os.path.exists(file_path):
+                if not os.path.isfile(file_path):
                     st.error(f"File not found: {file_path}")
                 else:
                     try:
@@ -384,7 +386,6 @@ def gsr_ppg_app():
                         st.error(f"Error processing stored file: {str(e)}")
     else:
         st.info("No stored files available.")
-
 
 if __name__ == "__main__":
     gsr_ppg_app()
