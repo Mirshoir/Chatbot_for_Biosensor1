@@ -242,47 +242,60 @@ def analyze_and_save_image(image_bytes: bytes):
         with st.spinner("🧠 Analyzing image with VLM..."):
             analysis_result = analyze_image_with_gradio(img_path)
 
-            if isinstance(analysis_result, dict) and "error" in analysis_result:
-                raise RuntimeError(analysis_result["error"])
-            elif isinstance(analysis_result, str) and "error" in analysis_result.lower():
-                raise RuntimeError(analysis_result)
+            # Convert all results to dictionary format for consistency
+            if isinstance(analysis_result, str):
+                # Handle string responses - could be error or legacy format
+                if "error" in analysis_result.lower():
+                    result_dict = {"error": analysis_result}
+                else:
+                    result_dict = {"analysis": analysis_result}
+            elif isinstance(analysis_result, dict):
+                result_dict = analysis_result
+            else:
+                result_dict = {"error": f"Unexpected result type: {type(analysis_result)}"}
 
             # Save structured results
-            log_entry = f"{timestamp}|{img_path}|{json.dumps(analysis_result)}\n"
+            log_entry = f"{timestamp}|{img_path}|{json.dumps(result_dict)}\n"
             with open(IMAGE_ANALYSIS_FILE, "a", encoding="utf-8") as f:
                 f.write(log_entry)
 
-        return analysis_result, img_path, None
+        return result_dict, img_path, result_dict.get("error", None)
     except Exception as e:
         error_msg = f"Image processing error: {str(e)}"
         logger.error(error_msg)
+        error_dict = {"error": error_msg}
         with open(IMAGE_ANALYSIS_FILE, "a", encoding="utf-8") as f:
-            f.write(f"{timestamp}|{img_path}|{error_msg}\n")
-        return None, None, error_msg
+            f.write(f"{timestamp}|{img_path}|{json.dumps(error_dict)}\n")
+        return error_dict, None, error_msg
 
 
 def display_vlm_analysis(analysis_result):
-    """Display VLM analysis in a structured format"""
-    if not analysis_result or ("error" in analysis_result if isinstance(analysis_result, dict) else False):
-        if isinstance(analysis_result, dict):
-            error = analysis_result.get("error", "Unknown error")
-        else:
-            error = str(analysis_result)
-        st.error(f"Analysis error: {error}")
+    """Display VLM analysis in a structured format with robust error handling"""
+    # Handle null case first
+    if analysis_result is None:
+        st.error("No analysis result available")
         return
-
-    # Handle both structured dict and legacy string output
+    
+    # Handle string results (legacy format)
     if isinstance(analysis_result, str):
-        # Legacy format - display as is
-        st.info(analysis_result)
+        if "error" in analysis_result.lower():
+            st.error(f"Analysis error: {analysis_result}")
+        else:
+            st.info(analysis_result)
         return
 
+    # Handle dictionary results
+    if "error" in analysis_result:
+        st.error(f"Analysis error: {analysis_result['error']}")
+        return
+
+    # Regular processing for dictionary results
     with st.expander("🔍 VLM Analysis Details", expanded=True):
         cols = st.columns(2)
 
         with cols[0]:
             st.subheader("🧍 Student Behavior")
-            behavior = analysis_result.get("behavior", "No behavior analysis")
+            behavior = analysis_result.get("behavior", analysis_result.get("analysis", "No behavior analysis"))
             st.markdown(f"<div class='card'>{behavior}</div>", unsafe_allow_html=True)
 
             # Behavior recommendations
@@ -427,14 +440,19 @@ def show_engagement_trends():
                 parts = line.strip().split('|')
                 if len(parts) >= 3:
                     try:
-                        timestamp = datetime.strptime(parts[0], "%Y%m%d_%H%M%S")
-                        analysis = json.loads(parts[2])
-                        if "engagement_score" in analysis:
-                            engagement_data.append({
-                                "timestamp": timestamp,
-                                "engagement": analysis["engagement_score"]
-                            })
-                    except:
+                        # Safely parse JSON data
+                        analysis_dict = json.loads(parts[2])
+                        
+                        # Handle both new dict format and legacy string format
+                        if isinstance(analysis_dict, dict):
+                            if "engagement_score" in analysis_dict:
+                                engagement_data.append({
+                                    "timestamp": datetime.strptime(parts[0], "%Y%m%d_%H%M%S"),
+                                    "engagement": analysis_dict["engagement_score"]
+                                })
+                        # Skip non-dict entries
+                    except json.JSONDecodeError:
+                        # Skip lines that can't be parsed
                         continue
 
         if not engagement_data:
@@ -481,21 +499,21 @@ def show_engagement_trends():
         with col1:
             st.markdown(f"""
             <div class="metric-card">
-                <h3>{df['engagement'].iloc[-1]}</h3>
+                <h3>{df['engagement'].iloc[-1] if len(df) > 0 else 'N/A'}</h3>
                 <p>Current Engagement</p>
             </div>
             """, unsafe_allow_html=True)
         with col2:
             st.markdown(f"""
             <div class="metric-card">
-                <h3>{df['engagement'].max()}</h3>
+                <h3>{df['engagement'].max() if len(df) > 0 else 'N/A'}</h3>
                 <p>Session High</p>
             </div>
             """, unsafe_allow_html=True)
         with col3:
             st.markdown(f"""
             <div class="metric-card">
-                <h3>{df['engagement'].min()}</h3>
+                <h3>{df['engagement'].min() if len(df) > 0 else 'N/A'}</h3>
                 <p>Session Low</p>
             </div>
             """, unsafe_allow_html=True)
